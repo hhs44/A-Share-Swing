@@ -1,0 +1,6 @@
+pandas>=2.1,<3
+numpy>=1.26,<3
+akshare>=1.15
+backtrader>=1.9.78.123
+apscheduler>=3.10,<4
+pytest>=8,<10
