@@ -1,0 +1,30 @@
+started_at=2026-11-04T17:52:13.884147+08:00
+command=/workspace/A-Share-Swing/.venv/bin/python -m ashare_swing.acceptance --start 2025-01-01 --end 2026-11-04 --output work/acceptance-final-20261104/raw --probe freshness
+exit_code=1
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/A-Share-Swing/ashare_swing/acceptance.py", line 160, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/workspace/A-Share-Swing/ashare_swing/acceptance.py", line 104, in main
+    probe(args.probe,args.symbol,args.start,end,args.output)
+  File "/workspace/A-Share-Swing/ashare_swing/acceptance.py", line 24, in probe
+    dates=pd.to_datetime(pd.read_csv(root/'calendar-all-raw.csv')['trade_date'])
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
+    return _read(filepath_or_buffer, kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 620, in _read
+    parser = TextFileReader(filepath_or_buffer, **kwds)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
+    self._engine = self._make_engine(f, self.engine)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
+    self.handles = get_handle(
+                   ^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/pandas/io/common.py", line 873, in get_handle
+    handle = open(
+             ^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'work/acceptance-final-20261104/raw/calendar-all-raw.csv'

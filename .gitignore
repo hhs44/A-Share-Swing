@@ -6,3 +6,6 @@ __pycache__/
 *.db
 reports/
 data/cache/
+
+work/
+data/history/

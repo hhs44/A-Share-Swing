@@ -6,6 +6,7 @@ Input bars must be arranged with dates ascending and only dates <= T.
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 import pandas as pd
+import numpy as np
 
 REQUIRED = {"date", "open", "high", "low", "close", "volume", "amount"}
 
@@ -29,10 +30,18 @@ def normalize_bars(frame: pd.DataFrame) -> pd.DataFrame:
         raise ValueError(f"K线缺少字段: {sorted(missing)}")
     df = frame.copy()
     df["date"] = pd.to_datetime(df["date"])
+    if df["date"].isna().any():
+        raise ValueError("非法日期")
+    duplicates = df[df.duplicated("date", keep=False)]
+    if not duplicates.empty and (duplicates.groupby("date")[list(REQUIRED - {"date"})].nunique(dropna=False) > 1).any().any():
+        raise ValueError("同日行情冲突")
     df = df.sort_values("date").drop_duplicates(subset=["date"], keep="last")
     for col in REQUIRED - {"date"}:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-    df = df.dropna(subset=["open", "high", "low", "close", "volume", "amount"])
+    if not np.isfinite(df[list(REQUIRED - {"date"})].to_numpy()).all():
+        raise ValueError("行情包含缺失或非有限值")
+    if ((df.high < df[["open", "close", "low"]].max(axis=1)) | (df.low > df[["open", "close", "high"]].min(axis=1))).any():
+        raise ValueError("OHLC区间非法")
     if (df[["open", "high", "low", "close"]] <= 0).any().any():
         raise ValueError("非正行情价格")
     if (df[["volume", "amount"]] < 0).any().any():
@@ -77,12 +86,12 @@ def screen(code: str, bars: pd.DataFrame, benchmark: pd.DataFrame | None = None,
         "收盘价不高于MA20的108%": bool(row["close"] <= ma20 * 1.08),
         "当日涨幅不超过5%": bool(today_change <= 0.05),
         "20日平均成交额超过1亿元": bool(df["amount"].tail(20).mean() > 1e8),
-        "股价位于8到20元之间": bool(8 <= float(row["close"]) <= 20),
+
     }
     if benchmark_return is None:
         tests["基准行情完整且与信号日期一致"] = False
     features = {
-        "ma20": round(ma20, 4), "ma60": round(ma60, 4),
+        "conditions": tests, "preferred_price": bool(8 <= float(row["close"]) <= 20), "ma20": round(ma20, 4), "ma60": round(ma60, 4),
         "prior_high20": round(prev_max20, 4), "volume_ratio": round(volume_ratio, 4),
         "ret20": round(ret20, 5), "benchmark_ret20": None if benchmark_return is None else round(benchmark_return, 5),
         "today_change": round(today_change, 5), "avg_amount20": round(float(df["amount"].tail(20).mean()), 2)

@@ -1,0 +1,6 @@
+{
+  "disclaimer": "模拟研究，不构成投资建议",
+  "valid": false,
+  "error": "[Errno 2] No such file or directory: 'data/history/manifest.json'",
+  "metrics": null
+}

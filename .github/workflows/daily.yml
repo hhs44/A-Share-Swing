@@ -1,0 +1,74 @@
+name: Daily paper research
+on:
+  schedule:
+    - cron: '30 8 * * 1-5'  # 16:30 Asia/Shanghai
+    - cron: '0 9 * * 1-5'   # retry 17:00
+    - cron: '0 11 * * 1-5'  # 19:00 regenerate, validate, publish
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: daily-paper-research
+  cancel-in-progress: false
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r requirements.txt
+      - name: Validate calendar and skip holidays
+        id: session
+        env:
+          BUNDLE_PATH: ${{ vars.ASHARE_BUNDLE_PATH || 'data/history' }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+          import pandas as pd
+          root=Path(os.environ['BUNDLE_PATH'])
+          meta=json.loads((root/'manifest.json').read_text())
+          today=datetime.now(ZoneInfo('Asia/Shanghai')).date().isoformat()
+          if meta['calendar_through'] < today:
+              raise RuntimeError('Calendar coverage expired')
+          dates=set(pd.read_csv(root/'calendar.csv')['date'])
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+              out.write('trading='+str(today in dates).lower()+'\n')
+          PY
+      - uses: actions/cache/restore@v4
+        if: steps.session.outputs.trading == 'true'
+        with:
+          path: data/signals.db
+          key: signals-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: signals-${{ github.ref_name }}-
+      - name: Scan verified dataset (missing or stale data fails closed)
+        if: steps.session.outputs.trading == 'true'
+        env:
+          BUNDLE_PATH: ${{ vars.ASHARE_BUNDLE_PATH || 'data/history' }}
+        run: python -m ashare_swing scan --bundle "$BUNDLE_PATH" --output reports/staged
+      - name: Publish after 19:00 only
+        if: steps.session.outputs.trading == 'true'
+        run: |
+          python - <<'PY'
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          from ashare_swing.daily import publish
+          if datetime.now(ZoneInfo('Asia/Shanghai')).hour >= 19:
+              publish('reports/staged','reports/published')
+          PY
+      - uses: actions/cache/save@v4
+        if: success() && steps.session.outputs.trading == 'true'
+        with:
+          path: data/signals.db
+          key: signals-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/upload-artifact@v4
+        if: success() && steps.session.outputs.trading == 'true'
+        with:
+          name: paper-research-${{ github.run_id }}
+          path: |
+            reports/
+            data/signals.db

@@ -1,0 +1,66 @@
+started_at=2026-11-04T17:52:10.921864+08:00
+command=/workspace/A-Share-Swing/.venv/bin/python -m ashare_swing.acceptance --start 2025-01-01 --end 2026-11-04 --output work/acceptance-final-20261104/raw --probe stock --symbol 000001
+exit_code=1
+Traceback (most recent call last):
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py", line 779, in urlopen
+    self._prepare_proxy(conn)
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1074, in _prepare_proxy
+    conn.connect()
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/urllib3/connection.py", line 844, in connect
+    self._tunnel()
+  File "/workspace/.python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/http/client.py", line 991, in _tunnel
+    raise OSError(f"Tunnel connection failed: {code} {message.strip()}")
+OSError: Tunnel connection failed: 403 Forbidden
+
+The above exception was the direct cause of the following exception:
+
+urllib3.exceptions.ProxyError: ('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden'))
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/urllib3/util/retry.py", line 555, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58%2Cf59%2Cf60%2Cf61%2Cf116&ut=7eea3edcaed734bea9cbfc24409ed989&klt=101&fqt=0&secid=0.000001&beg=20250101&end=20261104 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/A-Share-Swing/ashare_swing/acceptance.py", line 160, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/workspace/A-Share-Swing/ashare_swing/acceptance.py", line 104, in main
+    probe(args.probe,args.symbol,args.start,end,args.output)
+  File "/workspace/A-Share-Swing/ashare_swing/acceptance.py", line 46, in probe
+    raw=ak.stock_zh_a_hist(symbol=symbol,period='daily',start_date=start.replace('-',''),end_date=end.replace('-',''),adjust='')
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/akshare/stock/quote/stock_hist_em.py", line 989, in stock_zh_a_hist
+    r = http.get(url, params=params)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/akshare/utils/http.py", line 112, in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/akshare/utils/http.py", line 96, in request
+    return requests.request(method, url, **_apply_defaults(kwargs))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/.venv/lib/python3.11/site-packages/requests/adapters.py", line 723, in send
+    raise ProxyError(e, request=request)
+requests.exceptions.ProxyError: HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fields1=f1%2Cf2%2Cf3%2Cf4%2Cf5%2Cf6&fields2=f51%2Cf52%2Cf53%2Cf54%2Cf55%2Cf56%2Cf57%2Cf58%2Cf59%2Cf60%2Cf61%2Cf116&ut=7eea3edcaed734bea9cbfc24409ed989&klt=101&fqt=0&secid=0.000001&beg=20250101&end=20261104 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))

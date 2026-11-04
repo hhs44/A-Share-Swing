@@ -1,0 +1,13 @@
+started_at=2026-11-04T17:52:16.425156+08:00
+command=/workspace/A-Share-Swing/.venv/bin/python -m ashare_swing publish --staged work/acceptance-final-20261104/staged --output work/acceptance-final-20261104/published
+exit_code=1
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/A-Share-Swing/ashare_swing/__main__.py", line 2, in <module>
+    main()
+  File "/workspace/A-Share-Swing/ashare_swing/cli.py", line 33, in main
+    publish(args.staged,args.output)
+  File "/workspace/A-Share-Swing/ashare_swing/daily.py", line 87, in publish
+    raise ValueError('北京时间19:00后才允许发布')
+ValueError: 北京时间19:00后才允许发布

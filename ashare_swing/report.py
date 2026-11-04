@@ -19,11 +19,16 @@ def persist_signals(db_path: str, signals: list[Signal]) -> None:
 
 def render_markdown(signals: list[Signal], asof: str, synthetic: bool = False) -> str:
     label = '【演示假数据：严禁用于投资】' if synthetic else '【真实行情研究结果：不构成交易建议】'
-    lines = [f'# A股波段观察日报 — {asof}', '', label, '',
+    lines = [f'# A股波段观察日报 — {asof}', '', label, '', '模拟研究，不构成投资建议', '',
              '|代码|收盘价|信号|未通过规则|模拟股数|预计止损价|', '|---|---:|---|---|---:|---:|']
+    cash, exposure, positions = 10000., 0., 0
     for s in signals:
-        p = plan_order(s.code, s.close, cash=10_000) if s.eligible else None
-        reason = '满足筛选' if s.eligible else '；'.join(s.reasons)
+        p = plan_order(s.code, s.close, cash=cash, existing_exposure=exposure, existing_positions=positions) if s.eligible else None
+        if p and p.approved:
+            cash -= p.estimated_buy_cash
+            exposure += p.entry_price * p.shares
+            positions += 1
+        reason = ('满足筛选；' + p.reason) if s.eligible else '；'.join(s.reasons)
         lines.append(f'|{s.code}|{s.close:.2f}|{"候选" if s.eligible else "不候选"}|{reason}|{p.shares if p else 0}|{p.stop_price if p else "—"}|')
     lines += ['', '注意：信号使用收盘数据，最早下一交易日才可能交易。数据延迟、T+1、涨跌停、停牌、跳空与手续费均影响实际结果。',
               '本日报仅为研究工具输出，不连接券商，不保证收益，也不构成交易建议。']

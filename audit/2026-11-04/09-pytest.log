@@ -1,0 +1,5 @@
+started_at=2026-11-04T17:52:16.814641+08:00
+command=/workspace/A-Share-Swing/.venv/bin/python -m pytest -q --junitxml=work/acceptance-final-20261104/pytest.xml
+exit_code=0
+..............................................                           [100%]
+46 passed in 8.46s
