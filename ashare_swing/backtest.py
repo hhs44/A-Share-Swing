@@ -60,6 +60,10 @@ def run(history, start, end, cfg=None):
         equity_open = cash + sum(row(c).open*p['shares'] for c,p in positions.items())
         state = risk_state(equity_open,peak)
         halted |= state == 'halt'
+        for code in positions:
+            security=history.status.loc[(day,code)]
+            if not security.listed or security.delisted:
+                raise ValueError(f'{code}: 持仓发生退市/非上市状态，缺少现金处置规则')
         for code,p in list(positions.items()):
             b = row(code); st = history.status.loc[(day,code)]
             age = i-p['session']

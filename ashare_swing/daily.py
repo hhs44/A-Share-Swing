@@ -23,19 +23,14 @@ def scan_bundle(directory, output='reports/staged', db='data/signals.db', asof=N
     now=now or datetime.now(ZoneInfo('Asia/Shanghai'))
     if pd.Timestamp(history.meta['calendar_through']).date() < now.astimezone(ZoneInfo('Asia/Shanghai')).date():
         raise ValueError('日历有效期不足')
-    # Coverage includes holidays; never treat calendar_through itself as a trading session.
-    local=now.astimezone(ZoneInfo('Asia/Shanghai'))
-    dates=history.calendar
-    eligible=dates[(dates.date<local.date()) | ((dates.date==local.date()) & (local.time()>=time(16,30)))]
-    if eligible.empty:
-        raise ValueError('没有完整交易日')
-    latest=eligible.max().strftime('%Y-%m-%d')
+    latest=latest_session(history.calendar,now)
     day=asof or latest
     if day != latest:
         raise ValueError('日报只能使用最近完整交易日；历史研究请用 backtest')
     history.validate_range(day,day)
     stamp=datetime.fromisoformat(history.meta['retrieved_at'])
-    if stamp > now or stamp.astimezone(ZoneInfo('Asia/Shanghai')).date().isoformat() < day:
+    cutoff=datetime.fromisoformat(day+'T16:30:00+08:00')
+    if stamp > now or stamp < cutoff:
         raise ValueError('数据来源时间戳过期或位于未来')
     # Deliberately explicit fresh paper portfolio; never masquerade as live account state.
     signals=signals_at(history,pd.Timestamp(day))
@@ -85,6 +80,8 @@ def record_outcomes(history, db_path, asof):
 
 def publish(staged, output, now=None):
     now=now or datetime.now(ZoneInfo('Asia/Shanghai'))
+    if now.tzinfo is None:
+        raise ValueError('时钟必须带时区')
     local=now.astimezone(ZoneInfo('Asia/Shanghai'))
     if local.time()<time(19):
         raise ValueError('北京时间19:00后才允许发布')
@@ -94,5 +91,10 @@ def publish(staged, output, now=None):
     md=(root/f'{day}.md').read_text()
     if result['date'] != day or result.get('disclaimer')!=DISCLAIMER or hashlib.sha256(md.encode()).hexdigest()!=result['markdown_sha256']:
         raise ValueError('报告日期/摘要/声明校验失败')
+    stamp=pd.Timestamp(result['source']['retrieved_at'])
+    generated=pd.Timestamp(result['generated_at'])
+    cutoff=pd.Timestamp(day+'T16:30:00+08:00')
+    if stamp.tzinfo is None or generated.tzinfo is None or not (cutoff <= stamp <= generated <= pd.Timestamp(now)):
+        raise ValueError('报告来源/生成时间戳不完整或过期')
     for ext in ('md','json'):
         atomic_write(Path(output)/f'{day}.{ext}',(root/f'{day}.{ext}').read_text())

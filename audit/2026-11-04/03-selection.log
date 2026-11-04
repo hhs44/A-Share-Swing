@@ -1,0 +1,24 @@
+started_at=2026-11-04T17:52:14.593758+08:00
+command=/workspace/A-Share-Swing/.venv/bin/python -m ashare_swing scan --bundle data/history --output work/acceptance-final-20261104/staged --db work/acceptance-final-20261104/signals.db
+exit_code=1
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/A-Share-Swing/ashare_swing/__main__.py", line 2, in <module>
+    main()
+  File "/workspace/A-Share-Swing/ashare_swing/cli.py", line 57, in main
+    result=scan_bundle(args.bundle,args.output,args.db,args.asof)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/ashare_swing/daily.py", line 22, in scan_bundle
+    history=History(directory)
+            ^^^^^^^^^^^^^^^^^^
+  File "/workspace/A-Share-Swing/ashare_swing/history.py", line 31, in __init__
+    self.meta = json.loads((root / 'manifest.json').read_text())
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/pathlib.py", line 1058, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/.python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/pathlib.py", line 1044, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'data/history/manifest.json'

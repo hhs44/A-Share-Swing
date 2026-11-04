@@ -82,6 +82,8 @@ class History:
         self.indices = self.indices.set_index(['date','code']).sort_index()
 
     def validate_range(self, start, end):
+        if self.calendar.empty or self.calendar.min() > pd.Timestamp(start) or self.calendar.max() < pd.Timestamp(end):
+            raise ValueError('日历未覆盖完整请求区间，禁止把部分历史标记为完整回测')
         sessions = self.calendar[(self.calendar >= pd.Timestamp(start)) & (self.calendar <= pd.Timestamp(end))]
         if sessions.empty or pd.Timestamp(end) not in sessions:
             raise ValueError('结束日期不是交易日或区间为空')

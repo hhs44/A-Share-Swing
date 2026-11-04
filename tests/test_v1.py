@@ -36,7 +36,7 @@ def bundle(tmp_path):
 
 def rewrite(root,name,fn):
     path=root/f'{name}.csv'
-    frame=pd.read_csv(path,dtype={'code':str}); fn(frame); frame.to_csv(path,index=False)
+    frame=pd.read_csv(path,dtype={'code':str}); changed=fn(frame); frame=(changed if isinstance(changed,pd.DataFrame) else frame); frame.to_csv(path,index=False)
     meta=json.loads((root/'manifest.json').read_text());meta['sha256'][path.name]=hashlib.sha256(path.read_bytes()).hexdigest()
     (root/'manifest.json').write_text(json.dumps(meta))
 
@@ -115,7 +115,7 @@ def test_missing_status_and_action_fail_closed(bundle):
 
 def test_missing_index_fail_closed(bundle):
     root,days=bundle
-    rewrite(root,'indices',lambda df:df.drop(df[df.date==str(days[90].date())].index,inplace=True))
+    rewrite(root,'indices',lambda df:df.drop(df[df.date==str(days[90].date())].index))
     with pytest.raises(ValueError,match='双指数'): run(History(root),str(days[70].date()),str(days[100].date()))
 
 
@@ -245,5 +245,45 @@ def test_one_weak_index_blocks_new_signals(bundle):
 
 def test_missing_stock_session_fails_closed(bundle):
     root,days=bundle
-    rewrite(root,'bars',lambda df:df.drop(df[df.date==str(days[90].date())].index,inplace=True))
+    rewrite(root,'bars',lambda df:df.drop(df[df.date==str(days[90].date())].index))
     with pytest.raises(ValueError,match='缺少行情'):run(History(root),str(days[70].date()),str(days[100].date()))
+
+
+def test_full_backtest_range_cannot_silently_shrink(bundle):
+    root,days=bundle
+    with pytest.raises(ValueError,match='完整请求区间'):
+        run(History(root),'2020-01-01',str(days[-1].date()))
+
+
+def test_intraday_source_timestamp_rejected(bundle):
+    root,days=bundle;day=str(days[-1].date())
+    meta=json.loads((root/'manifest.json').read_text());meta['retrieved_at']=day+'T10:00:00+08:00';(root/'manifest.json').write_text(json.dumps(meta))
+    with pytest.raises(ValueError,match='时间戳'):
+        scan_bundle(root,now=datetime.fromisoformat(day+'T19:00:00+08:00'))
+
+
+def test_calendar_coverage_claim_cannot_mask_old_calendar(bundle):
+    root,days=bundle
+    # Claimed through December, but actual calendar ends in July: reject November scan.
+    with pytest.raises(ValueError,match='交易日历覆盖不足'):
+        scan_bundle(root,now=datetime.fromisoformat('2025-11-04T19:00:00+08:00'))
+
+
+def test_delisted_holding_requires_explicit_settlement(bundle):
+    root,days=bundle
+    result=run(History(root),str(days[70].date()),str(days[100].date()))
+    buy=next(x for x in result['ledger'] if x['side']=='buy')
+    nextday=days[days>pd.Timestamp(buy['date'])][0]
+    def delist(df):df.loc[df.date==str(nextday.date()),'delisted']=1
+    rewrite(root,'status',delist)
+    with pytest.raises(ValueError,match='退市'):
+        run(History(root),str(days[70].date()),str(days[100].date()))
+
+
+def test_publication_checks_source_time_even_if_md_hash_matches(bundle):
+    root,days=bundle;day=str(days[-1].date());now=datetime.fromisoformat(day+'T19:00:00+08:00')
+    stage=root/'stage';scan_bundle(root,stage,str(root/'signals.db'),now=now)
+    result=json.loads((stage/f'{day}.json').read_text());result['source']['retrieved_at']=day+'T10:00:00+08:00'
+    (stage/f'{day}.json').write_text(json.dumps(result))
+    with pytest.raises(ValueError,match='时间戳'):
+        publish(stage,root/'out',now=now)

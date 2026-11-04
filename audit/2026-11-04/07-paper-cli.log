@@ -1,0 +1,5 @@
+started_at=2026-11-04T17:52:15.980779+08:00
+command=/workspace/A-Share-Swing/.venv/bin/python -m ashare_swing paper --bundle data/history
+exit_code=2
+usage: __main__.py [-h] {scan,backtest,publish} ...
+__main__.py: error: argument command: invalid choice: 'paper' (choose from 'scan', 'backtest', 'publish')
