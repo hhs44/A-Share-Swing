@@ -1,5 +1,6 @@
 import argparse
 import datetime as dt
+import json
 from pathlib import Path
 import pandas as pd
 from .data import download_stock, download_benchmark
@@ -27,13 +28,31 @@ def main(argv=None):
     pub=subs.add_parser('publish')
     pub.add_argument('--staged',default='reports/staged')
     pub.add_argument('--output',default='reports/published')
+    collection=subs.add_parser('collect-free',help='Collect and validate public watchlist data')
+    collection.add_argument('--output',default='data/free-workflow/snapshots')
+    collection.add_argument('--symbols',default='000001,600000')
+    paper=subs.add_parser('paper',help='Advance persistent forward-paper account using a verified free snapshot')
+    paper.add_argument('--snapshot',required=True)
+    paper.add_argument('--db',default='data/free-workflow/paper.db')
+    paper.add_argument('--output',default='data/free-workflow/staged')
     args=parser.parse_args(argv)
+    if args.command=='collect-free':
+        from .free_data import collect
+        print(collect(args.output,args.symbols))
+        return
+    if args.command=='paper':
+        from .free_data import load
+        from .paper import advance
+        from .free_daily import lock, stage
+        with lock(Path(args.db).parent):
+            report=advance(args.db,load(args.snapshot))
+            print(stage(report,args.output)/'report.md')
+        return
     if args.command=='publish':
         from .daily import publish
         publish(args.staged,args.output)
         return
     if args.command=='backtest':
-        import json
         from .history import History, DISCLAIMER
         from .backtest import run
         from .daily import atomic_write

@@ -1,4 +1,43 @@
-# A股波段研究：V1 工程实现（数据验收未完成）
+# A股波段研究：免费向前模拟与历史研究
+
+## 免费自动工作流（2026-11-07新增）
+
+已实现公开行情自动采集、数据校验、SQLite持续模拟账户和本机定时日报。它面向明确配置的观察池，**不代表全市场选股或完整历史回测通过**。默认观察池为原工程中的000001、600000两个接口样本，不是买入推荐。可通过`--symbols`配置沪深主板代码；有持仓或待成交信号的证券会自动保留在采集池中。
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-free.txt
+# 收盘后：采集、校验、账户推进、备份和生成暂存日报
+.venv/bin/python -m ashare_swing.free_daily
+# 北京时间19:00后重新采集验证，并发布最近完整交易日的日报
+.venv/bin/python -m ashare_swing.free_daily --publish
+# 分步诊断
+.venv/bin/python -m ashare_swing collect-free --symbols 000001,600000
+.venv/bin/python -m ashare_swing paper --snapshot 数据快照路径.json
+# 安装本机调度；需要系统允许写入当前用户LaunchAgents
+.venv/bin/python scripts/install_local_schedule.py
+# 卸载本项目的调度，不删除账户
+.venv/bin/python scripts/install_local_schedule.py --uninstall
+```
+
+本机调度默认16:40采集、17:10重试、19:05重新校验并发布；非交易日跳过。使用电脑系统时间（当前为北京时间），需要电脑开机、登录且能够联网；睡眠唤醒可能延后运行。2026年度日历按[交易所休市安排](https://www.sse.com.cn/disclosure/dealinstruc/closed/c/c_20251222_10802510.shtml)核实，遇到2027年拒绝运行，更新年度日历后再启用。旧的依赖缺失历史数据包的GitHub定时作业已改为手动；本次没有启用云端无人值守服务。
+
+本机状态保存在`data/free-workflow/`：
+
+- `snapshots/`：每次成功采集的原始日线/报价、来源时间、哈希；失败不移动latest指针。
+- `paper.db`：持续账户、按交易日唯一的账本、成交记录；SQLite事务和进程锁防重复写入。
+- `backups/YYYY-MM-DD.db`：SQLite一致性备份；自动保留每个处理日版本。
+- `staged/YYYY-MM-DD/report.md`：已生成但未发布的日报。
+- `published/YYYY-MM-DD/report.md`：通过19:00时间和内容一致性检查的日报。
+- `last-run.json`、`last-run.md`、`logs/`：最近运行结果及调度日志；失败不得解释为上次报告仍然有效。
+
+校验覆盖代码/市场/名称、真实交易日、至少61条行情、2026年至今交易日连续覆盖、有限正价格、OHLC和成交量、报价时间、涨跌停价及报价与日线一致性。缺失或停牌行情不猜测填补；当前版本会阻止该次全池记账。公开接口使用超时与重试，保留正常代理及TLS校验。免费最小依赖不需要AKShare或mini-racer。
+
+账户首次从1万元空仓初始化，不追溯虚拟成交；前一交易日收盘信号最早下一交易日开盘模拟，执行100股整手、费用、滑点、容量和涨跌停约束，持仓按T+1、止损、最长15交易日及趋势保护规则管理。账户现金、持仓、净值高点和15%停机锁存持续保存，重启不重置。重复处理同一份交易日数据返回原结果；同日行情修订拒绝覆盖历史。漏跑交易日拒绝用今日证券状态回填过去；持仓遇到公司行动或前收盘异常时冻结记账并保留原账户，尚未实现分红/配股/退市资金结算。
+
+`.github/workflows/free-ci.yml`使用最小依赖运行全套测试，手动运行时额外尝试真实公开行情。测试中的多日成交是明确标记的合成机械验证；本次真实账户刚初始化、空仓，不存在已完成的多日实绩。最新交付与验收见`FREE_WORKFLOW_ACCEPTANCE.md`。
+
+## 原有历史研究接口（仍未完整验收）
 
 **模拟研究，不构成投资建议。** 不含券商接入、实盘账户或自动下单。当前不能宣称已通过 V1 全部验收：真实历史数据缺失，远端行情接口访问失败，未产生真实回测成绩。合成测试只能证明程序行为。
 
@@ -71,7 +110,7 @@ python -m ashare_swing backtest --bundle data/history --end YYYY-MM-DD --output 
 
 ## 自动日报与CI
 
-`.github/workflows/daily.yml`：北京时间工作日16:30扫描、17:00重试、19:00重新校验扫描并发布；支持workflow_dispatch手动重试；GitHub定时任务可能延迟。真实交易日历判定节假日。文件不存在、日历过期、数据未更新则作业失败，禁止上传当日错误报告。产物通过Actions artifact供审阅，不推送邮件或交易指令。
+`.github/workflows/daily.yml`：旧历史数据包路径已改为仅workflow_dispatch手动运行，避免无人维护的缺失数据包定时失败。真实交易日历判定节假日。文件不存在、日历过期、数据未更新则作业失败，禁止上传当日错误报告。产物通过Actions artifact供审阅，不推送邮件或交易指令。自动运行使用上面的本机免费工作流。
 
 需要维护者配置 `ASHARE_BUNDLE_PATH`（默认 `data/history`）并让runner取得有授权的更新数据。**当前工作流没有数据采集/授权供应方下载步骤，因此默认会因缺少数据失败；尚不能无人值守生成真实日报。** 不要把商业行情/凭据提交公开仓库。SQLite用Actions cache跨运行尽力恢复，完整历史应由部署方使用持久卷或数据库保存；缓存可被清除，不能当作可靠长期存储。失败重试不重复信号主键；不保证跨文件/数据库事务原子性，多进程并行CLI应由外部锁保护；工作流已串行化。
 
@@ -92,4 +131,4 @@ python -m ashare_swing.acceptance --output work/acceptance-new --bundle data/his
 
 该命令实际请求AKShare交易日历、证券名称、000001/600000日线和沪深300/深证成指；核验最近完整交易日，再依次运行真实扫描、独立整手/账户风险算术场景、2020起分期回测、持续模拟CLI能力探测、日报发布、pytest。不会导入演示行情用于真实数据阶段；真实失败时保留 `null`，不将其写为零候选或零收益。整手/风控场景使用明确标注的算术输入，不是行情或真实模拟成交。测试夹具仍包含合成数据，只证明代码行为。
 
-验收命令仅在全部步骤通过才退出0。当前 `paper` CLI尚未实现，且真实数据缺失，因此退出1是如实报告验收失败；不能据pytest通过宣称系统端到端可用。2026-11-04真实执行结果见 [E2E_ACCEPTANCE.md](E2E_ACCEPTANCE.md)。诊断Markdown不是选股日报。
+历史验收命令仅在全部步骤通过才退出0。历史数据包的paper接口尚不支持，真实历史数据缺失，因此退出1如实报告历史验收失败；新实现的 `paper --snapshot` 接口与 `free_daily` 是独立的向前观察池工作流，不能据此宣称历史全市场回测通过。2026-11-04历史真实执行结果见 [E2E_ACCEPTANCE.md](E2E_ACCEPTANCE.md)。诊断Markdown不是选股日报。

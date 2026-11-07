@@ -5,13 +5,24 @@ An incomplete acceptance returns exit code 1, even if every pytest passes.
 """
 import argparse
 from datetime import datetime
-from importlib.metadata import version
+from importlib.metadata import version, PackageNotFoundError
 import json
 from pathlib import Path
 import shlex
 import subprocess
 import sys
 from zoneinfo import ZoneInfo
+
+
+def dependency_versions():
+    """Keep the diagnostic summary available even when setup is incomplete."""
+    result = {}
+    for package in ('akshare', 'pandas', 'numpy', 'pytest'):
+        try:
+            result[package] = version(package)
+        except PackageNotFoundError:
+            result[package] = None
+    return result
 
 
 def probe(kind, symbol, start, end, output):
@@ -140,12 +151,12 @@ print(json.dumps({'kind':'market_independent_arithmetic_only','cases':cases},ens
     daily=json.loads(staged[0].read_text()) if len(staged)==1 else None
     backtest=json.loads((root/'backtest.json').read_text()) if (root/'backtest.json').exists() else None
     summary=dict(disclaimer='模拟研究，不构成投资建议',started_at=now.isoformat(),finished_at=datetime.now(ZoneInfo('Asia/Shanghai')).isoformat(),
-                 acceptance_passed=passed,python=sys.version,versions={p:version(p) for p in ('akshare','pandas','numpy','pytest')},
+                 acceptance_passed=passed,python=sys.version,versions=dependency_versions(),
                  requested_market_range=[args.start,end],requested_backtest_ranges=[['2020-01-01','2023-12-29'],['2024-01-01','2025-12-31'],['2026-01-01',latest or end]],
                  verified_latest_complete_session=latest,observed_data_ranges=actual,
                  candidates=daily.get('candidates') if daily else None,executed_paper_trades=None,performance=backtest.get('periods') if backtest and backtest.get('valid') else None,
                  data_completeness_passed=commands[6]['exit_code']==0,
-                 note='null表示未完成真实验证，不等同于零候选/零交易/零收益；paper CLI尚未实现，回测模拟不等同持续模拟账户。',commands=commands)
+                 note='null表示未完成真实验证，不等同于零候选/零交易/零收益；历史数据包paper接口不支持，免费向前账户须单独运行free_daily验收，不能替代全历史验收。',commands=commands)
     (root/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding='utf8')
     lines=['# A股波段端到端验收（非选股日报）','','模拟研究，不构成投资建议','',f'运行：{now.isoformat()}',f'端到端验收：{"通过" if passed else "未通过"}',
            f'请求行情范围：{args.start} 至 {end}',f'已验证最近完整交易日：{latest or "未知（无法确认）"}',
