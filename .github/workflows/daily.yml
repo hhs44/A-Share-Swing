@@ -1,9 +1,5 @@
-name: Daily paper research
+name: Legacy historical bundle research (manual only)
 on:
-  schedule:
-    - cron: '30 8 * * 1-5'  # 16:30 Asia/Shanghai
-    - cron: '0 9 * * 1-5'   # retry 17:00
-    - cron: '0 11 * * 1-5'  # 19:00 regenerate, validate, publish
   workflow_dispatch:
 permissions:
   contents: read
